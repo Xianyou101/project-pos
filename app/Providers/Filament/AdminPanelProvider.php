@@ -25,8 +25,11 @@ class AdminPanelProvider extends PanelProvider
         return $panel
             ->default()
             ->id('admin')
+
             ->path('admin')
             ->login()
+            // ->brandName('Sistem wirehouse Rtsp 31')
+            ->brandLogo(fn () => view('components.logo'))
             ->colors([
                 'primary' => Color::Amber,
             ])

@@ -77,7 +77,7 @@ class OrderController extends Controller
             'paid_amount',
             'change_amount'
         ]));
-        
+
         foreach($request->items as $item) {
             $order->orderProducts()->create([
                 'product_id' => $item['product_id'],
