@@ -1,0 +1,65 @@
+@import "tailwindcss/preflight";
+@import "tailwindcss/utilities";
+
+/* Custom styling kita */
+body {
+  background-color: #121212;
+  color: #ffffff;
+  font-family: 'Inter', sans-serif;
+}
+
+.filament-sidebar {
+  background-color: #1a1a1a !important;
+  border-inline-end: 1px;
+
+
+.filament-sidebar-item:hover {
+  background-color: #333 !important;
+  color: #FFD700 !important;
+  transition: all 0.3s ease;
+}
+
+.card,
+.filament-widget {
+  background-color: #1E1E1E !important;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.05);
+  padding: 1rem;
+  transition: all 0.2s ease;
+}
+
+.filament-tables-table {
+  background-color: #1e1e1e;
+  color: #fff;
+}
+
+.filament-tables-header {
+  background-color: #292929;
+}
+
+.filament-button {
+  background-color: #FFD700 !important;
+  color: #000 !important;
+  font-weight: bold;
+  border-radius: 8px;
+  transition: background-color 0.3s ease;
+}
+
+.filament-button:hover {
+  background-color: #e6c200 !important;
+}
+
+::-webkit-scrollbar {
+  border-inline-end: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+}
