@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+use App\Models\User;
 
 class DatabaseSeeder extends Seeder
 {
@@ -13,11 +13,26 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // ✅ Buat user admin jika belum ada
+        $admin = User::firstOrCreate(
+            ['email' => 'adimasputra101@gmail.com'],
+            [
+                'name' => 'adimasputra',
+                'password' => Hash::make('root'), // Password default
+            ]
+        );
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        if ($admin->wasRecentlyCreated) {
+            $this->command->info("✅ Admin user berhasil dibuat: {$admin->email}");
+        } else {
+            $this->command->warn("ℹ️ Admin user sudah ada: {$admin->email}");
+        }
+
+        // ✅ Jalankan seeder tambahan
+        $this->call([
+            CategorySeeder::class,
+            ProductSeeder::class,
+            PaymentMethodSeeder::class, // ✅ Tambahkan seeder metode pembayaran
         ]);
     }
 }

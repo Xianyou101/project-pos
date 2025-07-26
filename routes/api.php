@@ -10,6 +10,10 @@ use App\Http\Controllers\Api\SettingController;
 
 Route::post('login', [AuthController::class, 'login']);
 
+
+Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logoutApi']);
+
+
 Route::apiResource('products', ProductController::class)->middleware(['auth:sanctum']);
 Route::get('products/barcode/{barcode}', [ProductController::class, 'showByBarcode'])->middleware(['auth:sanctum']);
 Route::get('payment-methods', [PaymentMethodController::class, 'index'])->middleware(['auth:sanctum']);
@@ -20,4 +24,12 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
+Route::get('/hello', function () {
+    return response()->json([
+        'message' => 'Hello from server!'
 
+
+
+
+    ]);
+});

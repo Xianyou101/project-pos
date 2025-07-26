@@ -20,15 +20,19 @@ class OrderProduct extends Model
         'unit_price',
     ];
 
+    /**
+     * Relasi ke order.
+     */
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
     }
 
+    /**
+     * Relasi ke produk.
+     */
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
     }
-
-    
 }

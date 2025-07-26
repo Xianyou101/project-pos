@@ -12,18 +12,22 @@ class OrderController extends Controller
 {
     public function index()
     {
-        $orders = Order::with('orderProducts', 'paymentMethod')->get();
+        $orders = Order::with(['orderProducts.product', 'paymentMethod'])->get();
 
         $orders->transform(function ($order) {
             $order->payment_method = $order->paymentMethod->name ?? '-';
-            $order->orderProducts->transform(function ($item) {
+
+            $order->order_items = $order->orderProducts->map(function ($item) {
                 return [
                     'product_id' => $item->product_id,
                     'product_name' => $item->product->name ?? '-',
                     'quantity' => $item->quantity ?? 0,
-                    'unit_price' => $item->unit_price ?? 0
+                    'unit_price' => $item->unit_price ?? 0,
                 ];
             });
+
+            unset($order->orderProducts);
+            unset($order->paymentMethod);
 
             return $order;
         });
@@ -42,10 +46,12 @@ class OrderController extends Controller
             'total_price' => 'required|numeric',
             'notes' => 'nullable|string',
             'payment_method_id' => 'required|exists:payment_methods,id',
+            'paid_amount' => 'nullable|numeric',
+            'change_amount' => 'nullable|numeric',
             'items' => 'required|array',
             'items.*.product_id'  => 'required|exists:products,id',
             'items.*.quantity'  => 'required|integer|min:1',
-            'items.*.unit_price'  => 'required|integer|min:0',
+            'items.*.unit_price'  => 'required|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -56,12 +62,12 @@ class OrderController extends Controller
             ], 422);
         }
 
-        foreach($request->items as $item) {
+        foreach ($request->items as $item) {
             $product = Product::find($item['product_id']);
             if (!$product || $product->stock < $item['quantity']) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Stok produk kosong : '.$product->name
+                    'message' => 'Stok produk kosong atau tidak cukup: ' . ($product->name ?? 'Produk tidak ditemukan'),
                 ], 422);
             }
         }
@@ -70,6 +76,7 @@ class OrderController extends Controller
             'name',
             'email',
             'gender',
+            'birthday',
             'phone',
             'total_price',
             'notes',
@@ -78,12 +85,15 @@ class OrderController extends Controller
             'change_amount'
         ]));
 
-        foreach($request->items as $item) {
+        foreach ($request->items as $item) {
             $order->orderProducts()->create([
                 'product_id' => $item['product_id'],
                 'quantity' => $item['quantity'],
-                'unit_price' => $item['unit_price']
+                'unit_price' => $item['unit_price'],
             ]);
+
+            $product = Product::find($item['product_id']);
+            $product->decrement('stock', $item['quantity']);
         }
 
         return response()->json([
@@ -91,6 +101,5 @@ class OrderController extends Controller
             'message' => 'Sukses melakukan order',
             'data' => $order
         ], 200);
-
     }
 }

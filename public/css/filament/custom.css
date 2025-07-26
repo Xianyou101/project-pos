@@ -1,0 +1,12 @@
+.filament-stats-overview-widget {
+    background-color: #f0f9ff !important;
+}
+
+.filament-stats-overview-widget .text-2xl {
+    color: #0f172a !important;
+    font-weight: bold;
+}
+
+.filament-stats-overview-widget .text-sm {
+    color: #475569 !important;
+}

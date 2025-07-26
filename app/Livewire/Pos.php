@@ -4,165 +4,151 @@ namespace App\Livewire;
 
 use Livewire\Component;
 use App\Models\Product;
-use App\Models\PaymentMethod;
 use App\Models\Order;
 use App\Models\OrderProduct;
-
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Contracts\HasForms;
-use Filament\Notifications\Notification;
+use App\Models\PaymentMethod;
 
 use Filament\Forms\Form;
-use Filament\Forms;
-use Filament\Forms\Set;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Contracts\HasForms;
+use Filament\Forms\Concerns\InteractsWithForms;
 
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
 
 class Pos extends Component implements HasForms
 {
     use InteractsWithForms;
+
     public $search = '';
     public $name_customer = '';
     public $gender = '';
-    public $payment_method_id = 0;
+    public $payment_method_id = null;
     public $payment_methods;
     public $order_items = [];
-    public $total_price;
+    public $total_price = 0;
+    public $isScannerOpen = false;
 
     protected $listeners = [
-        'loadOrderItems',
-        'scanResult' => 'handleScanResult'
+        'scanResult' => 'handleScanResult',
+        'toggle-scanner' => 'toggleScanner',
     ];
 
+    public function mount()
+    {
+        $this->payment_methods = PaymentMethod::all();
+
+        if (session()->has('orderItems')) {
+            $this->order_items = session('orderItems');
+        }
+
+        $this->calculateTotal();
+
+        $this->form->fill([
+            'name_customer' => $this->name_customer,
+            'gender' => $this->gender,
+            'payment_method_id' => $this->payment_method_id,
+            'total_price' => $this->total_price,
+        ]);
+    }
 
     public function render()
     {
         return view('livewire.pos', [
             'products' => Product::where('stock', '>', 0)
-                            ->search($this->search)
-                            ->paginate(12)
+                ->when($this->search, fn ($q) => $q->where('name', 'like', '%' . $this->search . '%'))
+                ->paginate(12),
         ]);
     }
 
     public function form(Form $form): Form
     {
-        return $form
-                ->schema([
-                    Forms\Components\Section::make('Form Checkout')
-                        ->schema([
-                            Forms\Components\TextInput::make('name_customer')
-                                ->required()
-                                ->maxLength(255)
-                                ->default(fn () => $this->name_customer),
-                            Forms\Components\Select::make('gender')
-                                ->options([
-                                    'male' => 'Male',
-                                    'female' => 'Female'
-                                ])
-                                ->required(),
-                            Forms\Components\TextInput::make('total_price')
-                                ->readOnly()
-                                ->numeric()
-                                ->default(fn () => $this->total_price),
-                            Forms\Components\Select::make('payment_method_id') 
-                                ->required()
-                                ->label('Payment Method')
-                                ->options($this->payment_methods->pluck('name', 'id'))
-                        ])
-                ]);
-    }
-
-    public function mount()
-    {
-        if (session()->has('orderItems')) {
-            $this->order_items = session('orderItems');
-        }
-        $this->payment_methods = PaymentMethod::all();
-        $this->form->fill(['payment_methods', $this->payment_methods]);
+        return $form->schema([
+            Section::make('Form Checkout')->schema([
+                TextInput::make('name_customer')
+                    ->required()
+                    ->label('Nama Customer'),
+                Select::make('gender')
+                    ->options([
+                        'male' => 'Laki-laki',
+                        'female' => 'Perempuan',
+                    ])
+                    ->required()
+                    ->label('Jenis Kelamin'),
+                TextInput::make('total_price')
+                    ->readOnly()
+                    ->numeric()
+                    ->label('Total Harga')
+                    ->default(fn () => $this->total_price),
+                Select::make('payment_method_id')
+                    ->required()
+                    ->label('Metode Pembayaran')
+                    ->options(fn () => $this->payment_methods->pluck('name', 'id')),
+            ]),
+        ]);
     }
 
     public function addToOrder($productId)
     {
         $product = Product::find($productId);
-        if ($product) {
-            if ($product->stock <= 0) {
-                Notification::make()
-                    ->title('Stok habis')
-                    ->danger()
-                    ->send();
-                return;
-            }
-
-            $existingItemKey = null;
-            foreach($this->order_items as $key => $item) {
-                if ($item['product_id'] == $productId) {
-                    $existingItemKey = $key;
-                    break;
-                }
-            }
-
-            if ($existingItemKey !== null) {
-                $this->order_items[$existingItemKey]['quantity']++;
-            } else {
-                $this->order_items[] = [
-                    'product_id' => $product->id,
-                    'name' => $product->name,
-                    'price' => $product->price,
-                    'image_url' => $product->image_url,
-                    'quantity' => 1,
-                ];
-            }
-
-            session()->put('orderItems', $this->order_items);
+        if (!$product || $product->stock <= 0) {
             Notification::make()
-                    ->title('Produk ditambahkan ke keranjang')
-                    ->success()
-                    ->send();
-
-
-        }
-    }
-
-    public function loadOrderItems($orderItems)
-    {
-        $this->order_items = $orderItems;
-        session()->put('orderItems', $orderItems);
-    }
-
-    public function increaseQuantity($product_id)
-    {
-        $product = Product::find($product_id);
-
-        if (!$product) {
-            Notification::make()
-                ->title('Produk tidak ditemukan')
+                ->title($product ? 'Stok habis' : 'Produk tidak ditemukan')
                 ->danger()
                 ->send();
             return;
         }
 
-        foreach($this->order_items as $key => $item) {
+        foreach ($this->order_items as $key => $item) {
+            if ($item['product_id'] == $productId) {
+                $this->order_items[$key]['quantity']++;
+                $this->updateSession();
+                Notification::make()->title('Jumlah produk ditambahkan')->success()->send();
+                return;
+            }
+        }
+
+        $this->order_items[] = [
+            'product_id' => $product->id,
+            'name' => $product->name,
+            'price' => $product->price,
+            'image_url' => $product->image_url,
+            'quantity' => 1,
+        ];
+
+        $this->updateSession();
+        Notification::make()->title('Produk ditambahkan ke keranjang')->success()->send();
+    }
+
+    public function increaseQuantity($product_id)
+    {
+        $product = Product::find($product_id);
+        if (!$product) return;
+
+        foreach ($this->order_items as $key => $item) {
             if ($item['product_id'] == $product_id) {
                 if ($item['quantity'] + 1 <= $product->stock) {
                     $this->order_items[$key]['quantity']++;
                 } else {
                     Notification::make()
-                    ->title('Stok barang tidak mencukupi')
-                    ->danger()
-                    ->send();
+                        ->title('Stok tidak mencukupi')
+                        ->danger()
+                        ->send();
                 }
                 break;
             }
         }
 
-        session()->put('orderItems', $this->order_items);
+        $this->updateSession();
     }
 
     public function decreaseQuantity($product_id)
     {
-        foreach($this->order_items as $key => $item) {
+        foreach ($this->order_items as $key => $item) {
             if ($item['product_id'] == $product_id) {
-                if ($this->order_items[$key]['quantity'] > 1) {
+                if ($item['quantity'] > 1) {
                     $this->order_items[$key]['quantity']--;
                 } else {
                     unset($this->order_items[$key]);
@@ -171,17 +157,16 @@ class Pos extends Component implements HasForms
                 break;
             }
         }
-        session()->put('orderItems', $this->order_items);
+
+        $this->updateSession();
     }
 
     public function calculateTotal()
     {
-        $total = 0;
-        foreach($this->order_items as $item) {
-            $total += $item['quantity'] * $item['price'];
-        }
-        $this->total_price = $total;
-        return $total;
+        $this->total_price = collect($this->order_items)
+            ->sum(fn ($item) => $item['price'] * $item['quantity']);
+
+        return $this->total_price;
     }
 
     public function checkout()
@@ -189,46 +174,75 @@ class Pos extends Component implements HasForms
         $this->validate([
             'name_customer' => 'required|string|max:255',
             'gender' => 'required|in:male,female',
-            'payment_method_id' => 'required'
+            'payment_method_id' => 'required|exists:payment_methods,id',
         ]);
-
-        $payment_method_id_temp = $this->payment_method_id;
 
         $order = Order::create([
             'name' => $this->name_customer,
             'gender' => $this->gender,
             'total_price' => $this->calculateTotal(),
-            'payment_method_id' => $payment_method_id_temp
+            'payment_method_id' => $this->payment_method_id,
         ]);
 
-        foreach($this->order_items as $item) {
+        foreach ($this->order_items as $item) {
             OrderProduct::create([
                 'order_id' => $order->id,
                 'product_id' => $item['product_id'],
                 'quantity' => $item['quantity'],
-                'unit_price' => $item['price']
+                'unit_price' => $item['price'],
             ]);
+
+            // Kurangi stok
+            $product = Product::find($item['product_id']);
+            if ($product) {
+                $product->decrement('stock', $item['quantity']);
+            }
         }
 
         $this->order_items = [];
-        session()->forget(['orderItems']);
+        session()->forget('orderItems');
 
-        return redirect()->to('admin/orders');
+        Notification::make()->title('Transaksi berhasil')->success()->send();
+        return redirect()->to('/admin/orders');
     }
 
-    public function handleScanResult($decodeText)
+    public function handleScanResult($decodedText)
     {
-        $product = Product::where('barcode', $decodeText)->first();
+        $product = Product::where('barcode', $decodedText)->first();
 
         if ($product) {
             $this->addToOrder($product->id);
+
+            Log::info('✅ Barcode berhasil dipindai', [
+                'barcode' => $decodedText,
+                'product_id' => $product->id,
+                'product_name' => $product->name,
+            ]);
+
+            Notification::make()
+                ->title('Produk ditemukan: ' . $product->name)
+                ->success()
+                ->send();
         } else {
-            Notifiction::make()
-                ->title('Product not found '.$decodeText)
+            Log::warning('❌ Barcode tidak ditemukan', [
+                'barcode' => $decodedText,
+            ]);
+
+            Notification::make()
+                ->title('Produk tidak ditemukan: ' . $decodedText)
                 ->danger()
                 ->send();
         }
     }
 
+    public function toggleScanner()
+    {
+        $this->isScannerOpen = !$this->isScannerOpen;
+    }
 
+    private function updateSession()
+    {
+        session()->put('orderItems', $this->order_items);
+        $this->calculateTotal();
+    }
 }

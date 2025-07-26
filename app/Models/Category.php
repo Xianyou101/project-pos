@@ -19,11 +19,17 @@ class Category extends Model
         'description',
     ];
 
+    /**
+     * Relasi ke produk.
+     */
     public function products(): HasMany
     {
         return $this->hasMany(Product::class);
     }
 
+    /**
+     * Generate slug unik untuk kategori.
+     */
     public static function generateUniqueSlug(string $name): string
     {
         $slug = Str::slug($name);
@@ -31,12 +37,9 @@ class Category extends Model
         $counter = 1;
 
         while (self::where('slug', $slug)->exists()) {
-            $slug = $originalSlug . '-' . $counter;
-            $counter++;
+            $slug = $originalSlug . '-' . $counter++;
         }
 
         return $slug;
     }
-
-
 }

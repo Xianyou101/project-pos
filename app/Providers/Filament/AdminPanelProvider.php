@@ -28,6 +28,12 @@ class AdminPanelProvider extends PanelProvider
 
             ->path('admin')
             ->login()
+
+            ->login()
+            ->registration()
+
+            ->brandName('Sistem Warehouse RTSP 31')
+
             // ->brandName('Sistem wirehouse Rtsp 31')
             ->brandLogo(fn () => view('components.logo'))
             ->colors([

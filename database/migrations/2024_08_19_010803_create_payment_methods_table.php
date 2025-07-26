@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('payment_methods', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('image');
+            $table->string('image')->nullable(); // dibuat nullable agar fleksibel
             $table->boolean('is_cash')->default(false);
             $table->timestamps();
             $table->softDeletes();

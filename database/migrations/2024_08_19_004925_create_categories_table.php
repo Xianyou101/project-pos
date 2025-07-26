@@ -7,23 +7,23 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * Jalankan migrasi.
      */
     public function up(): void
     {
         Schema::create('categories', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('slug')->unique();
-            $table->longtext('description')->nullable();
-            $table->boolean('is_active')->default(true);
-            $table->timestamps();
-            $table->softDeletes();
+            $table->string('name'); // Nama kategori
+            $table->string('slug')->unique(); // URL friendly
+            $table->longText('description')->nullable(); // Deskripsi kategori
+            $table->boolean('is_active')->default(true); // Status aktif
+            $table->timestamps(); // created_at & updated_at
+            $table->softDeletes(); // deleted_at
         });
     }
 
     /**
-     * Reverse the migrations.
+     * Rollback migrasi.
      */
     public function down(): void
     {
