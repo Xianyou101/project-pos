@@ -16,15 +16,30 @@ class PaymentMethod extends Model
         'is_cash',
     ];
 
+    protected $casts = [
+        'is_cash' => 'boolean',
+    ];
+
     protected $appends = ['image_url'];
 
+    /**
+     * Relasi ke tabel orders
+     */
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
     }
 
-    public function getImageUrlAttribute()
+    /**
+     * Getter untuk image URL secara otomatis
+     */
+    public function getImageUrlAttribute(): ?string
     {
-        return $this->image ? url('storage/'. $this->image) : null;
+        if (!$this->image) {
+            return null;
+        }
+
+        // Gunakan storage path
+        return asset('storage/' . ltrim($this->image, '/'));
     }
 }

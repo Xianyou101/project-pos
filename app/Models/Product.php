@@ -26,12 +26,17 @@ class Product extends Model
 
     protected $appends = ['image_url'];
 
-
+    /**
+     * Relasi ke kategori.
+     */
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
     }
 
+    /**
+     * Generate slug unik untuk produk.
+     */
     public static function generateUniqueSlug(string $name): string
     {
         $slug = Str::slug($name);
@@ -39,23 +44,31 @@ class Product extends Model
         $counter = 1;
 
         while (self::where('slug', $slug)->exists()) {
-            $slug = $originalSlug . '-' . $counter;
-            $counter++;
+            $slug = $originalSlug . '-' . $counter++;
         }
 
         return $slug;
     }
 
-    public function getImageUrlAttribute()
+    /**
+     * Getter URL gambar produk.
+     */
+    public function getImageUrlAttribute(): ?string
     {
-        return $this->image ? url('storage/'. $this->image) : null;
+        return $this->image ? url('storage/' . $this->image) : null;
     }
 
+    /**
+     * Scope pencarian produk berdasarkan nama.
+     */
     public function scopeSearch($query, $value)
     {
-        $query->where("name", "like", "%{$value}%");
+        return $query->where('name', 'like', "%{$value}%");
     }
 
+    /**
+     * Relasi ke order-product.
+     */
     public function orderProducts(): HasMany
     {
         return $this->hasMany(OrderProduct::class);

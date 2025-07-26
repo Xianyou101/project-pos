@@ -3,67 +3,81 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\PaymentMethodResource\Pages;
-use App\Filament\Resources\PaymentMethodResource\RelationManagers;
 use App\Models\PaymentMethod;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class PaymentMethodResource extends Resource
 {
     protected static ?string $model = PaymentMethod::class;
 
     protected static ?string $navigationIcon = 'heroicon-m-newspaper';
-
+    protected static ?string $navigationGroup = 'Manajemen Keuangan';
     protected static ?int $navigationSort = 4;
 
-    protected static ?string $navigationGroup = 'Others';
-
     public static function form(Form $form): Form
-    {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\FileUpload::make('image')
-                    ->image(),
-                Forms\Components\Toggle::make('is_cash')
-                    ->required(),
-            ]);
-    }
+{
+    return $form->schema([
+        Forms\Components\TextInput::make('name')
+            ->label('Nama Metode')
+            ->required()
+            ->maxLength(255),
+
+        Forms\Components\FileUpload::make('image')
+            ->label('Logo / Gambar')
+            ->image()
+            ->imagePreviewHeight('100')
+            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+            ->directory('payment-methods')
+            ->disk('public'),
+
+        Forms\Components\Toggle::make('is_cash')
+            ->label('Tunai (Cash)?')
+            ->required(),
+    ]);
+}
 
     public static function table(Table $table): Table
     {
-        return $table
-            ->columns([
+        return $table->columns([
+                Tables\Columns\ImageColumn::make('image')
+                    ->label('Logo')
+                    ->disk('public')
+                    ->square()
+                    ->height(50),
+
                 Tables\Columns\TextColumn::make('name')
+                    ->label('Nama Metode')
                     ->searchable(),
-                Tables\Columns\ImageColumn::make('image'),
+
                 Tables\Columns\IconColumn::make('is_cash')
-                    ->boolean(),
+                    ->boolean()
+                    ->label('Tunai?'),
+
                 Tables\Columns\TextColumn::make('created_at')
+                    ->label('Dibuat')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+
                 Tables\Columns\TextColumn::make('updated_at')
+                    ->label('Diperbarui')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+
                 Tables\Columns\TextColumn::make('deleted_at')
+                    ->label('Dihapus')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->filters([
-                //
-            ])
+            ->filters([])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()->label('Ubah'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -74,9 +88,7 @@ class PaymentMethodResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            //
-        ];
+        return [];
     }
 
     public static function getPages(): array
